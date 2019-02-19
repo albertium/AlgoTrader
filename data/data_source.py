@@ -53,9 +53,6 @@ class DataSource(metaclass=abc.ABCMeta):
         fields = ', '.join(f'{k} {v}' for k, v in self.schema.items())
         self.table_creation_query = f'CREATE TABLE IF NOT EXISTS {self.table_name} ( {fields} )'
 
-        fields = ('%s, ' * len(self.fields))[: -2]
-        self.insert_query = f'INSERT INTO {self.table_name} VALUES ({fields})'
-
         # find object in database
         res = self.read(f'SELECT last_update, freq FROM data_source_master WHERE name = "{name}"')
         if not res:
@@ -66,33 +63,44 @@ class DataSource(metaclass=abc.ABCMeta):
             else:
                 raise ValueError(f'data source {name} doesn''t exists')
         else:
+            if new:
+                raise RuntimeError(f'[{name}] already exists. Set "new" to False')
             self.last_update, self.freq = res[0]
-
-        if self.last_update is None:
-            self.last_update = const.MinDate
 
         # update if not up-to-date
         latest = datetime.now() - timedelta(1)  # type: datetime
         if self.last_update < latest:
+            print(f'[{name}] loading data ... ', end='')
             data = self.load_new_data(latest)  # type: pd.DataFrame
-            freq = infer_frequency(data)
+            print('done')
+            print(f'[{name}] {data.shape[0]:,} records loaded from {data.time.min()} to {data.time.max()}')
 
-            if self.freq is not None and freq > self.freq:
-                raise RuntimeError(f'Frequency mismatch. {freq.name} (new) vs {self.freq.name} (original)')
+            if not data.empty:
+                freq = infer_frequency(data)
+                if self.freq is not None and freq > self.freq:
+                    raise RuntimeError(f'Frequency mismatch. {freq.name} (new) vs {self.freq.name} (original)')
 
-            last_update = data.time.max()
-            print(f'{name} updated to {last_update} with frequency {freq.name}')
+                last_update = data.time.max()
 
-            blocks = split_dataframe(data, 1E4)
-            for idx, block in enumerate(blocks):
-                print(f'\r{idx / len(blocks) * 100:.2f}%', end='')
-                block.to_sql(self.table_name, con=DataSource.engine, if_exists='append', index=False)
+                blocks = split_dataframe(data, 1E4)
+                for idx, block in enumerate(blocks):
+                    print(f'\r[{name}] saving to database ... {idx / len(blocks) * 100:.2f}%', end='')
+                    block.to_sql(self.table_name, con=DataSource.engine, if_exists='append', index=False)
+                print(f'\r[{name}] saving to database ... 100.00%')
 
-            DataSource.con.execute(f'''
-                UPDATE data_source_master 
-                SET last_update = "{last_update}", freq = {freq.value} 
-                WHERE name = "{name}"
-            ''')
+                DataSource.con.execute(f'''
+                    UPDATE data_source_master 
+                    SET last_update = "{last_update}", freq = {freq.value} 
+                    WHERE name = "{name}"
+                ''')
+                print(f'[{name}] updated to {last_update} with frequency {freq.name}')
+            else:
+                if new:
+                    DataSource.con.execute(f'DELETE FROM data_source_master WHERE name = "{name}"')
+                    raise RuntimeError(f'[{name}] created with no data')
+                print(f'[{name}] up-to-date')
+
+        self.load_data()
 
     def initialize(self):
         with self.engine.begin() as con:
@@ -108,18 +116,15 @@ class DataSource(metaclass=abc.ABCMeta):
     def read(sql):
         return DataSource.con.execute(sql).fetchall()
 
-    def insert(self, sql, data=None):
-        if data is not None:
-            self.cur.executemany(sql, data)
-        else:
-            self.cur.execute(sql)
-        self.con.commit()
-
     @abc.abstractmethod
     def load_new_data(self, latest):
         """
         return data that is ready to input
         """
+        pass
+
+    @abc.abstractmethod
+    def load_data(self):
         pass
 
 

@@ -21,9 +21,6 @@ class T6(ctypes.Structure):
     ]
 
 
-# def convert_to_time(value):
-#     return datetime(1990, 1, 1) + timedelta(days=(value - 4674750981739642880) / 137438953472)
-
 def convert_to_time(values):
     values = (1440 * (values - 4674750981739642880) / 137438953472).round()
     return np.datetime64('1990-01-01') + values * np.timedelta64(1, 'm')
@@ -53,10 +50,8 @@ class ZorroSource(BarDataSource):
         data = []
         last_update_value = convert_time_to_value(self.last_update)
 
-        print('loading files ...')
         for year in range(self.last_update.year, latest.year + 1):
             file = Path(const.zorro_path) / f'{ticker}_{year}.t6'
-            print(file)
             if not file.exists():
                 if self.last_update == const.MinDate:
                     continue
@@ -73,5 +68,5 @@ class ZorroSource(BarDataSource):
         final = pd.DataFrame(data, columns=['time', 'high', 'low', 'open', 'close', 'adjusted', 'volume'])\
             .sort_values(by='time')
         final.time = convert_to_time(final.time)
-        print('done.\n')
+        final = final[final.time > self.last_update]
         return final.drop_duplicates('time', keep='last')

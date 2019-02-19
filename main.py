@@ -1,5 +1,6 @@
 
-from data import get_security
-from enum import IntEnum
+import at
+import const
 
-aud_usd = get_security('FX.AUDUSD.Z', new=True)
+data = at.get(['FX.AUDUSD.Z', 'FX.GBPUSD.Z', 'FX.EURUSD.Z'], const.Freq.H1, 0, '2010-01-01', '2018-12-31')
+print(data.head())

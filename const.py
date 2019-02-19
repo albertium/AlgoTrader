@@ -1,9 +1,9 @@
 
 from enum import Enum, IntEnum
-from datetime import datetime
+import numpy as np
 
 zorro_path = 'C:\\Users\\Albert\\Resilio Sync\\History'
-MinDate = datetime(1990, 1, 1)
+MinDate = np.datetime64('1990-01-01')
 
 
 class Security(Enum):
@@ -14,6 +14,7 @@ class Security(Enum):
 class Source(Enum):
     Tiingo = 'T'
     ZORRO = 'Z'
+    BAR = 'D'
 
 
 class Freq(IntEnum):
@@ -28,6 +29,13 @@ class Freq(IntEnum):
     M = 302400  # monthly
     Q = 907200  # quarterly
     Y = 3628800     # annual
+
+
+Phases = {
+    Freq.M5: {'valid': [0], 'unit': 0, 'denom': '5m'},
+    Freq.H1: {'valid': [0], 'unit': 0, 'denom': 'h'},
+    Freq.D: {'valid': list(range(24)), 'unit': np.timedelta64(1, 'h'), 'denom': 'D'}
+}
 
 
 sec_table_map = {
