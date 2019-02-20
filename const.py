@@ -2,7 +2,8 @@
 from enum import Enum, IntEnum
 import numpy as np
 
-zorro_path = 'C:\\Users\\Albert\\Resilio Sync\\History'
+ZorroPath = 'C:\\Users\\Albert\\Resilio Sync\\FXBootcamp\\Daily'
+# ZorroPath = 'C:\\Users\\Albert\\Resilio Sync\\FXBootcamp\\.sync\\Archive\\Daily'
 MinDate = np.datetime64('1990-01-01')
 
 
