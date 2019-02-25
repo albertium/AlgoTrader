@@ -7,6 +7,11 @@ ZorroPath = 'C:\\Users\\Albert\\Resilio Sync\\FXBootcamp\\Daily'
 MinDate = np.datetime64('1990-01-01')
 
 
+BrokerProfiles = {
+    'IB': {'comm': 0.00}
+}
+
+
 class Security(Enum):
     EQUITY = 'EQ'
     FX = 'FX'
