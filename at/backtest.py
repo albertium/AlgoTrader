@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import const
+from .report import Report
 
 
 class BackTest:
@@ -43,4 +44,4 @@ class BackTest:
                 weights = weights / np.sum(np.abs(weights))
 
         equity = pd.DataFrame(equity, columns=['time', 'equity']).set_index('time')
-        return equity
+        return Report(equity=equity)
